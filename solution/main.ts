@@ -53,7 +53,7 @@ class App {
     }
   }
 
-  static sendEmail(to, title, body) {
+  static sendEmail(to: string, title: string, body: string) {
     console.log("Sending email to : " + to);
     console.log("Title: " + title);
     console.log("Body: Body\n" + body);
