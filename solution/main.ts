@@ -1,63 +1,91 @@
-const fs = require("fs");
+import { trimString } from './stringUtils';
+import { convertFileToString } from './fileUtils';
+
+interface Employee {
+  firstName: string,
+  lastName: string,
+  birthdate: Date,
+  mail: string,
+}
+
+const convertBirthdateStringToDate = (birthdateString: string) => {
+  const birthdateInfo = birthdateString.split('/');
+  if (birthdateInfo.length !== 3) {
+    throw new Error('Cannot read birthdate');
+  }
+  const birthdate = new Date();
+  birthdate.setMonth(Number(birthdateInfo[1]) - 1);
+  birthdate.setDate(Number(birthdateInfo[0]));
+  return birthdate;
+};
+
+const convertFileLineToEmployee = (line: string): Employee => {
+  let employeeInfo = line
+    .split(',')
+    .map(trimString);
+
+  if (employeeInfo.length !== 4 || employeeInfo.some(info => info === '')) {
+    throw new Error('Invalid file format');
+  }
+
+  let birthdate: Date | null = null;
+  try {
+    birthdate = convertBirthdateStringToDate(employeeInfo[2]);
+  } catch (e: any) {
+    throw new Error(`${employeeInfo[0]} ${employeeInfo[1]}: ${e.message}`);
+  }
+
+  return {
+    firstName: employeeInfo[0],
+    lastName: employeeInfo[1],
+    birthdate,
+    mail: employeeInfo[3],
+  }
+};
+
+const computeFileLine = (fileName: string) => (line: string) => {
+  try {
+    let employee: Employee = convertFileLineToEmployee(line);
+
+    let now = new Date();
+    if (now.getDate() !== employee.birthdate.getDate() || now.getMonth() !== employee.birthdate.getMonth()) {
+      return;
+    }
+
+    App.sendEmail(
+      employee.mail,
+      'Joyeux Anniversaire !',
+      `Bonjour ${employee.firstName},\nJoyeux Anniversaire !\nA bientôt,`
+    );
+
+  } catch (error) {
+    console.log(error);
+    console.error(`Error reading file '${fileName}'`);
+  }
+
+};
 
 class App {
   static main() {
-    let fileName = "../employees.txt";
+    let fileName = './employees.txt';
 
     try {
-      if (fs.existsSync(fileName)) {
-        const b = fs.readFileSync(fileName);
-        let content = b.toString().split("\n");
-
-        console.log("Reading file...");
-        let fl = true;
-        for (let l of content) {
-          try {
-            if (fl) {
-              fl = false;
-            } else {
-              let t = l.split(",");
-              for (let i = 0; i < t.length; i++) {
-                t[i] = t[i].trim();
-              }
-
-              if (t.length == 4) {
-                const d = t[2].split("/");
-                if (d.length == 3) {
-                  let n = new Date();
-                  if (n.getDate() == Number.parseInt(d[0]) && n.getMonth() == Number.parseInt(d[1]) - 1) {
-                    App.sendEmail(
-                      t[3],
-                      "Joyeux Anniversaire !",
-                      "Bonjour " + t[0] + ",\nJoyeux Anniversaire !\nA bientôt,"
-                    );
-                  }
-                } else {
-                  throw new Error("Cannot read birthdate for " + t[0] + " " + t[1]);
-                }
-              } else {
-                throw new Error("Invalid file format");
-              }
-            }
-          } catch (e) {
-            console.log(e);
-            console.error("Error reading file '" + fileName + "'");
-          }
-        }
-        console.log("Batch job done.");
-      } else {
-        throw new Error("Unable to open file '" + fileName + "'");
-      }
+      const content = convertFileToString(fileName);
+      const contentArray = content.split('\n');
+      contentArray.shift();
+      console.log('Reading file...');
+      contentArray.forEach(computeFileLine(fileName))
+      console.log('Batch job done.');
     } catch (error) {
-      console.error("Error reading file '" + fileName + "'");
+      console.error(`Error reading file '${fileName}'`);
     }
   }
 
   static sendEmail(to: string, title: string, body: string) {
-    console.log("Sending email to : " + to);
-    console.log("Title: " + title);
-    console.log("Body: Body\n" + body);
-    console.log("-------------------------");
+    console.log(`Sending email to: ${to}`);
+    console.log(`Title: ${title}`);
+    console.log(`Body: Body\n${body}`);
+    console.log('-------------------------');
   }
 }
 
